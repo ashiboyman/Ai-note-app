@@ -25,92 +25,119 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { toast } from "sonner";
 
 const noteFormSchema = z.object({
-  title: z.string().min(1, {
-    message: "Title cannot be empty.",
-  }),
-  body: z.string().min(1, {
-    message: "Body cannot be empty.",
-  }),
+    title: z.string().min(1, {
+        message: "Title cannot be empty.",
+    }),
+    body: z.string().min(1, {
+        message: "Body cannot be empty.",
+    }),
 });
 
 export function CreateNoteButton() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
 
-  return (
-    <>
-      <Button onClick={() => setDialogOpen(true)}>
-        <Plus />
-        Create Note
-      </Button>
-      <CreateNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </>
-  );
+    return (
+        <>
+            <Button onClick={() => setDialogOpen(true)}>
+                <Plus />
+                Create Note
+            </Button>
+            <CreateNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+        </>
+    );
 }
 
 interface CreateNoteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
 }
 
 function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) {
-  const form = useForm<z.infer<typeof noteFormSchema>>({
-    resolver: zodResolver(noteFormSchema),
-    defaultValues: {
-      title: "",
-      body: "",
-    },
-  });
+    const createNote = useMutation(api.notes.createNote);
 
-  async function onSubmit(values: z.infer<typeof noteFormSchema>) {
-    // TODO: Create note from form input
-  }
+    const form = useForm<z.infer<typeof noteFormSchema>>({
+        resolver: zodResolver(noteFormSchema),
+        defaultValues: {
+            title: "",
+            body: "",
+        },
+    });
+    const submitting = form.formState.isSubmitting;
+    async function onSubmit(values: z.infer<typeof noteFormSchema>) {
+        try {
+            await createNote({
+                title: values.title,
+                body: values.body,
+            });
+            toast.success("Note created successfully");
+            form.reset();
+            onOpenChange(false);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to create note");
+        }
+    }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Note</DialogTitle>
-          <DialogDescription>
-            Fill in the details for your new note. Click save when you&apos;re
-            done.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Note title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="body"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Body</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Note body" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="submit">Save</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create New Note</DialogTitle>
+                    <DialogDescription>
+                        Fill in the details for your new note. Click save when
+                        you&apos;re done.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form
+                        onSubmit={form.handleSubmit(onSubmit)}
+                        className="space-y-8"
+                    >
+                        <FormField
+                            control={form.control}
+                            name="title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Title</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="Note title"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="body"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Body</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Note body"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button disabled={submitting} type="submit">
+                                {submitting ? "Saving..." : "Save"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
 }
